@@ -1,0 +1,335 @@
+/*++
+
+Copyright (c) Alex Ionescu.  All rights reserved.
+
+Module Name:
+
+    lclor.idl
+
+Abstract:
+
+    This module implements the interface definition for the Local OXID Resolver
+    for Windows 10, 20H1 systems and later
+
+Author:
+
+    Alex Ionescu (@aionescu) 18-May-2021 - Initial version
+
+Environment:
+
+    User mode only.
+
+--*/
+
+[
+    uuid(e60c73e6-88f9-11cf-9af1-0020af6e72f4),
+    version(2.0)
+]
+
+interface ILocalObjectExporter
+{
+    import "wtypes.idl";
+    import "hstring.idl";
+
+    typedef unsigned hyper ID;
+    typedef ID MID;
+    typedef ID OXID;
+    typedef ID OID;
+    typedef GUID IPID;
+
+    cpp_quote("#if 0")
+    cpp_quote("// Declare the LOCAL_HSTRING handle as wire_marshal for midl only")
+    typedef [wire_marshal(wireBSTR), unique] HSTRING__* LOCAL_HSTRING;
+    cpp_quote("#endif")
+    cpp_quote("")
+    cpp_quote("// Declare the LOCAL_HSTRING handle for C/C++")
+    cpp_quote("typedef __RPC_unique_pointer HSTRING__* LOCAL_HSTRING;")
+    cpp_quote("")
+
+    typedef [context_handle] void *PHPROCESS;
+
+    const DWORD PROXY_DECODE_MAX_STRUCT_SIZE = 300;
+    typedef struct
+    {
+        DWORD offsetofChannelPtrFromProxyPtr;
+        DWORD64 addressofOIDListHead;
+        [range(0, PROXY_DECODE_MAX_STRUCT_SIZE)] DWORD sizeofIPIDEntry;
+        DWORD offsetofNextIPIDPointerInIPIDEntry;
+        DWORD offsetofFlagsInIPIDEntry;
+        DWORD offsetofIPIDInIPIDEntry;
+        DWORD offsetofServerAddressInIPIDEntry;
+        DWORD offsetofOIDFLinkInIPIDEntry;
+        DWORD serverIPIDEntryFlag;
+        DWORD invalidIPIDEntryFlags;
+        [range(0, PROXY_DECODE_MAX_STRUCT_SIZE)] DWORD sizeofOxidEntry;
+        DWORD offsetofPidInOxidEntry;
+        DWORD offsetofTidInOxidEntry;
+        [range(0, PROXY_DECODE_MAX_STRUCT_SIZE)] DWORD sizeofCClientChannel;
+        DWORD offsetofCanonicalIRpcChannelBufferInCClientChannel;
+        DWORD offsetofIPIDEntryInCClientChannel;
+        DWORD offsetofOxidEntryInCClientChannel;
+        DWORD offsetofSignatureInCClientChannel;
+        GUID  guidSignatureofCClientChannel;
+    } PROXY_DECODE_INFO;
+
+    typedef struct
+    {
+        [string, unique] WCHAR* pName;
+        WORD wId;
+    } SECPKG;
+
+    typedef struct tagDUALSTRINGARRAY
+    {
+        WORD wNumEntries;
+        WORD wSecurityOffset;
+        [size_is(wNumEntries)] WORD aStringArray[];
+    } DUALSTRINGARRAY;
+
+    typedef enum
+    {
+        OR_OXID_CLIENT_DEPENDENCY_NONE = 0,
+        OR_OXID_CLIENT_DEPENDENCY_UNIDIRECTIONAL = 1,
+        OR_OXID_CLIENT_DEPENDENCY_BIDIRECTIONAL = 2,
+    } ClientDependencyBehavior;
+
+    typedef struct
+    {
+        WORD MajorVersion;
+        WORD MinorVersion;
+    } COMVERSION;
+
+    typedef struct
+    {
+        DWORD id;
+        DWORD version;
+        DWORD size;
+        [size_is((size + 7) & ~7)] BYTE data[];
+    } CONTAINER_EXTENT;
+
+    typedef struct
+    {
+        DWORD size;
+        DWORD reserved;
+        [size_is((size + 1) & ~1), ref] CONTAINER_EXTENT** extent;
+    } CONTAINER_EXTENT_ARRAY;
+
+    typedef struct
+    {
+        DWORD version;
+        DWORD64 capabilityFlags;
+        CONTAINER_EXTENT_ARRAY* extensions;
+    } CONTAINERVERSION;
+
+    typedef struct
+    {
+        DWORD dwTid;
+        DWORD dwPid;
+        DWORD dwAuthnHint;
+        COMVERSION version;
+        CONTAINERVERSION containerVersion;
+        IPID ipidRemUnknown;
+        DWORD dwFlags;
+        DUALSTRINGARRAY* psa;
+        GUID guidProcessIdentifier;
+        DWORD64 processHostId;
+        ClientDependencyBehavior clientDependencyBehavior;
+        LOCAL_HSTRING packageFullName;
+        LOCAL_HSTRING userSid;
+        LOCAL_HSTRING appcontainerSid;
+        OXID primaryOxid;
+        GUID primaryIpidRemUnknown;
+    } INTERNAL_OXID_INFO;
+
+    typedef struct
+    {
+        MID mid;
+        OXID oxid;
+        DWORD refs;
+    } OXID_REF;
+
+    typedef struct
+    {
+        MID mid;
+        OID oid;
+    } OID_MID_PAIR;
+
+    typedef struct
+    {
+        MID mid;
+        OXID oxid;
+        OID oid;
+    } OXID_OID_PAIR;
+
+    typedef struct
+    {
+        MID mid;
+        OID oid;
+        DWORD unmarshalCount;
+    } POTENTIAL_PROXY_OID;
+
+    const DWORD CONNECT_DISABLEDCOM = 0x1;
+    const DWORD CONNECT_ENABLE_CONTAINER_DCOM = 0x2;
+    const DWORD CONNECT_MUTUALAUTH = 0x4;
+    const DWORD CONNECT_SECUREREF = 0x8;
+    const DWORD CONNECT_CATCH_SERVER_EXCEPTIONS = 0x10;
+    const DWORD CONNECT_BREAK_ON_SILENCED_SERVER_EXCEPTIONS = 0x20;
+    const DWORD CONNECT_DISABLE_CALLFAILURE_LOGGING = 0x40;
+    const DWORD CONNECT_DISABLE_INVALID_SD_LOGGING = 0x80;
+    const DWORD CONNECT_ENABLE_OLD_MODAL_LOOP = 0x100;
+    const DWORD CONNECT_ACCESS_RESTRICTIONS_VIA_POLICY = 0x200;
+
+    const DWORD MAX_IDS = 0x20000;
+    const DWORD MAX_OIDS = 0x100000;
+
+    error_status_t
+    Connect (
+        [in] handle_t hServer,
+        [in, string, unique] WCHAR* pwszWinstaDesktop,
+        [in, string, unique] WCHAR* pwszExePath,
+        [in, unique] PROXY_DECODE_INFO* pProxyDecodeInfo,
+        [in] DWORD dwProcessFlags,
+        [in] WORD dwProcessArchitecture,
+        [out] PHPROCESS* pProcess,
+        [out] DWORD* pdwTimeoutInSeconds,
+        [out] DUALSTRINGARRAY** ppdsaOrBindings,
+        [out] MID* pLocalMid,
+        [in,range(0,MAX_IDS)] DWORD cIdsToReserve,
+        [out, size_is(cIdsToReserve)] ID aIdsReserved[],
+        [out] DWORD* pcIdsReserved,
+        [out] DWORD* pfConnectFlags,
+        [out] DWORD* pIncomingContainerAuthnSvc,
+        [out] DWORD* pOutgoingContainerAuthnSvc,
+        [out, string] WCHAR** pLegacySecurity,
+        [out] DWORD* pAuthnLevel,
+        [out] DWORD* pImpLevel,
+        [out] DWORD* pcServerSvc,
+        [out, size_is(,*pcServerSvc)] WORD** aServerSvc,
+        [out] DWORD* pcClientSvc,
+        [out, size_is(,*pcClientSvc)] SECPKG** aClientSvc,
+        [out] LONG* pcChannelHook,
+        [out, size_is(,*pcChannelHook)] GUID** aChannelHook,
+        [out] DWORD* pProcessID,
+        [out] DWORD* pScmProcessID,
+        [out] DWORD64* pSignature,
+        [out] GUID* pguidRPCSSProcessIdentifier,
+        [out] DWORD dwSDSizes[5],
+        [out] DWORD* pdwSDBlob,
+        [out, size_is(,*pdwSDBlob)] BYTE** pSDBlob
+        );
+
+    error_status_t
+    SetAppID (
+        [in] handle_t hServer,
+        [in] PHPROCESS phProcess,
+        [in] GUID guidAppID
+        );
+
+    error_status_t
+    GetDefaultSecurityPermissions (
+        [in] handle_t hServer,
+        [out] DWORD dwSDSizes[4],
+        [out] DWORD* pdwSDBlob,
+        [out, size_is(, *pdwSDBlob)] BYTE** pSDBlob
+        );
+
+    error_status_t
+    AllocateReservedIds (
+        [in] handle_t hServer,
+        [in] PHPROCESS phProcess,
+        [in, range(0, MAX_IDS)] unsigned long cIdsToAlloc,
+        [out, size_is(cIdsToAlloc)] ID aIdsAllocated[],
+        [out] DWORD* pcIdsAllocated
+        );
+
+    error_status_t
+    BulkUpdateOIDs (
+        [in] handle_t hServer,
+        [in] PHPROCESS phProcess,
+        [in, range(0, MAX_OIDS)] DWORD cOidsToBeAdded,
+        [in, size_is(cOidsToBeAdded)] OXID_OID_PAIR aOidsToBeAdded[],
+        [out, size_is(cOidsToBeAdded)] DWORD aStatusOfAdds[],
+        [in, range(0, MAX_OIDS)] DWORD cOidsToBeRemoved,
+        [in, size_is(cOidsToBeRemoved)] OID_MID_PAIR aOidsToBeRemoved[],
+        [in, range(0, MAX_OIDS)] DWORD cServerOidsToFree,
+        [in, size_is(cServerOidsToFree)] OID aServerOids[],
+        [in, range(0, MAX_OIDS)] DWORD cServerOidsToUnPin,
+        [in, size_is(cServerOidsToUnPin)] OID aServerOidsToUnPin[],
+        [in, range(0, MAX_OIDS)] DWORD cOxidsToFree,
+        [in, size_is(cOxidsToFree)] OXID_REF aOxidsToFree[],
+        [in, range(0, MAX_OIDS)] DWORD cUnmarshaledPotentialProxyOids,
+        [in, size_is(cUnmarshaledPotentialProxyOids)] POTENTIAL_PROXY_OID aUnmarshaledPotentialProxyOids[]
+        );
+
+    error_status_t
+    ClientResolveOXID (
+        [in] handle_t hServer,
+        [in] PHPROCESS phProcess,
+        [in, ref] OXID *poxidServer,
+        [in, unique] DUALSTRINGARRAY* pssaServerObjectResolverBindings,
+        [out, ref] INTERNAL_OXID_INFO* poxidInfo,
+        [out] MID* pLocalMidOfRemote,
+        [out] DWORD* pulMarshaledTargetInfoLength,
+        [out, size_is(,*pulMarshaledTargetInfoLength)] BYTE** pucMarshaledTargetInfo,
+        [out] WORD* pAuthnSvc
+        );
+
+    error_status_t
+    ServerAllocateOXIDAndOIDs (
+        [in] handle_t hServer,
+        [in] PHPROCESS phProcess,
+        [out, ref] OXID* poxidServer,
+        [in] DWORD fApartment,
+        [in, range(0, MAX_OIDS)]unsigned long cOids,
+        [out, size_is(cOids), length_is(*pcOidsAllocated)] OID aOid[],
+        [out] DWORD* pcOidsAllocated,
+        [in, ref] INTERNAL_OXID_INFO* poxidInfo,
+        [in, unique] DUALSTRINGARRAY* pdsaStringBindings,
+        [in, unique] DUALSTRINGARRAY* pdsaSecurityBindings,
+        [out] DWORD64* pdwOrBindingsID,
+        [out] DUALSTRINGARRAY** ppdsaOrBindings
+        );
+
+    error_status_t
+    ServerAllocateOIDs (
+        [in] handle_t hServer,
+        [in] PHPROCESS phProcess,
+        [in, ref] OXID* poxidServer,
+        [in, range(0, MAX_OIDS)] DWORD cOidsReturn,
+        [in, size_is(cOidsReturn)] OID aOidsReturn[],
+        [in, range(0, MAX_OIDS)] DWORD cOidsAlloc,
+        [out, size_is(cOidsAlloc)] OID aOidsAlloc[],
+        [out] DWORD* pcOidsAllocated
+        );
+
+    error_status_t
+    ServerFreeOXIDAndOIDs (
+        [in] handle_t hServer,
+        [in] PHPROCESS phProcess,
+        [in] OXID oxidServer,
+        [in, range(0, MAX_OIDS)]unsigned long cOids,
+        [in, size_is(cOids)] OID aOids[]
+        );
+
+    error_status_t
+    SetServerOIDFlags (
+        [in] handle_t hServer,
+        [in] PHPROCESS phProcess,
+        [in] OID oid,
+        [in] DWORD dwFlags
+        );
+
+    error_status_t
+    Disconnect (
+        [in] handle_t hClient,
+        [in, out] PHPROCESS* pphProcess,
+        [in] BOOL fQueueFastRundownWorkItem
+        );
+
+    error_status_t
+    GetUpdatedResolverBindings (
+        [in] handle_t hRpc,
+        [in] PHPROCESS phProcess,
+        [out] DUALSTRINGARRAY** ppdsaOrBindings,
+        [out] DWORD64* pdwBindingsID
+        );
+}

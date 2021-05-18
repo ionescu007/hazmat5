@@ -1,0 +1,39 @@
+/*++
+
+Copyright (c) Alex Ionescu.  All rights reserved.
+
+Module Name:
+
+    lclor.acf
+
+Abstract:
+
+    This module implements the interface definition annotations for the Local
+    OXID Resolver for Windows 10, 20H1 systems and later
+
+Author:
+
+    Alex Ionescu (@aionescu) 18-May-2021 - Initial version
+
+Environment:
+
+    User mode only.
+
+--*/
+
+interface ILocalObjectExporter
+{
+    typedef [context_handle_noserialize] PHPROCESS;
+    [comm_status, fault_status] Connect();
+    [comm_status, fault_status] SetAppID();
+    [comm_status, fault_status] GetDefaultSecurityPermissions();
+    [comm_status, fault_status] AllocateReservedIds();
+    [comm_status, fault_status] BulkUpdateOIDs();
+    [comm_status, fault_status] ClientResolveOXID();
+    [comm_status, fault_status] ServerAllocateOXIDAndOIDs();
+    [comm_status, fault_status] ServerAllocateOIDs();
+    [comm_status, fault_status] ServerFreeOXIDAndOIDs();
+    [comm_status, fault_status] SetServerOIDFlags();
+    [comm_status, fault_status] Disconnect();
+    [comm_status, fault_status] GetUpdatedResolverBindings();
+}
