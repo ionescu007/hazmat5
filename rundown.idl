@@ -1,0 +1,244 @@
+/*++
+
+Copyright (c) Alex Ionescu.  All rights reserved.
+
+Module Name:
+
+    rundown.idl
+
+Abstract:
+
+    This module implements the interface definition for the IRemUnknown family
+    of interfaces, that is to say:
+        * IRemUnknown
+        * IRemUnknown2
+        * IRemUnknownN
+        * IRundown
+
+Author:
+
+    Alex Ionescu (@aionescu) 19-May-2021 - Initial version
+
+Environment:
+
+    User mode only.
+
+--*/
+
+import "unknwn.idl";
+import "lclor.idl";
+
+interface ObjectRpcBaseTypes
+{
+    const DWORD OBJREF_SIGNATURE = 0x574f454d;
+
+    const DWORD SORF_NULL = 0x0;
+
+    const DWORD OBJREF_STANDARD = 0x1;
+    const DWORD OBJREF_HANDLER = 0x2;
+    const DWORD OBJREF_CUSTOM = 0x4;
+    const DWORD OBJREF_EXTENDED = 0x8;
+
+    typedef struct tagSTDOBJREF
+    {
+        DWORD flags;
+        DWORD cPublicRefs;
+        OXID oxid;
+        OID oid;
+        IPID ipid;
+    } STDOBJREF;
+
+    typedef struct tagDATAELEMENT
+    {
+        GUID dataID;
+        DWORD cbSize;
+        DWORD cbRounded;
+        [size_is((cbSize + 7) & ~7)] BYTE Data[];
+    } DATAELEMENT;
+
+    typedef struct tagOBJREFDATA
+    {
+        DWORD nElms;
+        [size_is(nElms + 1 - (nElms & 1), ), unique] DATAELEMENT** ppElmArray;
+    } OBJREFDATA;
+
+    typedef struct tagOBJREF
+    {
+        DWORD signature;
+        DWORD flags;
+        GUID iid;
+        [switch_is(flags), switch_type(DWORD)]
+        union
+        {
+            [case(OBJREF_STANDARD)]
+            struct
+            {
+                STDOBJREF std;
+                DUALSTRINGARRAY saResAddr;
+            } u_standard;
+            [case(OBJREF_HANDLER)]
+            struct
+            {
+                STDOBJREF std;
+                CLSID clsid;
+                DUALSTRINGARRAY saResAddr;
+            } u_handler;
+            [case(OBJREF_CUSTOM)]
+            struct
+            {
+                CLSID clsid;
+                DWORD cbExtension;
+                DWORD size;
+                [size_is(size), ref] BYTE* pData;
+            } u_custom;
+            [case(OBJREF_EXTENDED)]
+            struct
+            {
+                STDOBJREF std;
+                [unique] OBJREFDATA* pORData;
+                DUALSTRINGARRAY saResAddr;
+            } u_extended;
+        } u_objref;
+    } OBJREF;
+
+    typedef struct tagMInterfacePointer
+    {
+        DWORD ulCntData;
+        [size_is(ulCntData)] BYTE abData[];
+    } MInterfacePointer;
+
+    typedef [unique] MInterfacePointer* PMInterfacePointer;
+    typedef [disable_consistency_check] MInterfacePointer* PMInterfacePointerInternal;
+}
+
+[
+    object,
+    uuid(00000131-0000-0000-C000-000000000046),
+    async_uuid(000e0131-0000-0000-C000-000000000046)
+]
+interface IRemUnknown : IUnknown
+{
+    const DWORD MAX_REQUESTED_INTERFACES = 0x8000;
+
+    typedef struct tagREMQIRESULT
+    {
+        HRESULT hResult;
+        STDOBJREF std;
+    } REMQIRESULT;
+
+    typedef struct tagREMINTERFACEREF
+    {
+        IPID ipid;
+        DWORD cPublicRefs;
+        DWORD cPrivateRefs;
+    } REMINTERFACEREF;
+    typedef [disable_consistency_check] REMQIRESULT* PREMQIRESULT;
+
+    HRESULT
+    RemQueryInterface (
+        [in] REFIPID ripid,
+        [in] DWORD cRefs,
+        [in, range(1, MAX_REQUESTED_INTERFACES)] WORD cIids,
+        [in, size_is(cIids)] IID* iids,
+        [out, size_is(, cIids)] PREMQIRESULT* ppQIResults
+    );
+
+    HRESULT
+    RemAddRef (
+        [in] WORD cInterfaceRefs,
+        [in, size_is(cInterfaceRefs)] REMINTERFACEREF InterfaceRefs[],
+        [out, size_is(cInterfaceRefs)] HRESULT* pResults
+    );
+
+    HRESULT
+    RemRelease (
+        [in] WORD cInterfaceRefs,
+        [in, size_is(cInterfaceRefs)] REMINTERFACEREF InterfaceRefs[]
+    );
+}
+
+[
+    object,
+    uuid(00000143-0000-0000-C000-000000000046),
+    async_uuid(000e0143-0000-0000-C000-000000000046)
+]
+interface IRemUnknown2 : IRemUnknown
+{
+    HRESULT
+    RemQueryInterface2 (
+        [in] REFIPID ripid,
+        [in, range(1, MAX_REQUESTED_INTERFACES)] WORD cIids,
+        [in, size_is(cIids)] IID* iids,
+        [out, size_is(cIids)] HRESULT* phr,
+        [out, size_is(cIids)] PMInterfacePointerInternal* ppMIF
+    );
+}
+
+[
+    object,
+    uuid(0000013C-0000-0000-C000-000000000046),
+    async_uuid(000B013C-0000-0000-C000-000000000046)
+]
+interface IRemUnknownN : IRemUnknown2
+{
+    const DWORD IRUF_CONVERTTOWEAK = 0x01;
+    const DWORD IRUF_CONVERTTOSTRONG = 0x02;
+    const DWORD IRUF_DISCONNECTIFLASTSTRONG = 0x04;
+
+    typedef struct tagXAptCallback
+    {
+        DWORD64 pfnCallback;
+        DWORD64 pParam;
+        DWORD64 pServerCtx;
+        DWORD64 pUnk;
+        GUID iid;
+        INT iMethod;
+        GUID guidProcessSecret;
+    } XAptCallback;
+
+    HRESULT
+    AcknowledgeMarshalingSets (
+        [in] WORD cMarshalingSets,
+        [in, size_is(cMarshalingSets)] DWORD64* pMarshalingSets
+    );
+
+    HRESULT
+    RemChangeRef (
+        [in] DWORD flags,
+        [in] WORD cInterfaceRefs,
+        [in, size_is(cInterfaceRefs)] REMINTERFACEREF InterfaceRefs[]
+    );
+
+    HRESULT
+    DoCallback (
+        [in] XAptCallback* pCallbackData
+    );
+
+    HRESULT
+    DoNonreentrantCallback (
+        [in] XAptCallback* pCallbackData
+    );
+
+    HRESULT
+    GetInterfaceNameFromIPID (
+        [in] REFIPID ripid,
+        [out] HSTRING* interfaceName
+    );
+}
+
+[
+    object,
+    uuid(00000134-0000-0000-C000-000000000046),
+    async_uuid(000e0134-0000-0000-C000-000000000046)
+]
+interface IRundown : IRemUnknownN
+{
+    const DWORD MAX_OID_RUNDOWNS_PER_CALL = 100;
+
+    HRESULT
+    RundownOid (
+        [in, range(1, MAX_OID_RUNDOWNS_PER_CALL)] DWORD cOid,
+        [in, size_is(cOid)] OID aOid[],
+        [out, size_is(cOid)] BYTE aRundownStatus[]
+    );
+}

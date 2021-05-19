@@ -36,6 +36,7 @@ interface ILocalObjectExporter
     typedef ID OXID;
     typedef ID OID;
     typedef GUID IPID;
+    typedef REFGUID REFIPID;
 
     cpp_quote("#if 0")
     cpp_quote("// Declare the LOCAL_HSTRING handle as wire_marshal for midl only")
@@ -173,7 +174,7 @@ interface ILocalObjectExporter
     const DWORD CONNECT_SECUREREF = 0x8;
     const DWORD CONNECT_CATCH_SERVER_EXCEPTIONS = 0x10;
     const DWORD CONNECT_BREAK_ON_SILENCED_SERVER_EXCEPTIONS = 0x20;
-    const DWORD CONNECT_DISABLE_CALLFAILURE_LOGGING = 0x40;
+    const DWORD CONNECT_DISABLE_CALL_FAILURE_LOGGING = 0x40;
     const DWORD CONNECT_DISABLE_INVALID_SD_LOGGING = 0x80;
     const DWORD CONNECT_ENABLE_OLD_MODAL_LOOP = 0x100;
     const DWORD CONNECT_ACCESS_RESTRICTIONS_VIA_POLICY = 0x200;

@@ -26,10 +26,93 @@ flag values, parameter ordering, and procedure numbers have changed since past v
 Research was performed using the great RpcView and OleViewDotNet tooling, Hex-Rays, and private symbols for combase.dll, starting with the basic `lclor.idl` file
 present on GitHub.
 
+### `rundown.idl`
+
+The full, up-to-date, specification for the IRemUnknown-derived family of interfaces has also never been officially published, other than the limited information
+published in the official protocol specification, which covers the over-the-wire messages that are normally used in network DCOM. Additional methods, used locally,
+have either been seen in GitHub dumps or some blog posts and presentations from James Forshaw -- but even those have changed in 20H1 and later.
+
+These interfaces can be useful for a variety of local system exploration and analysis, and are easily obtainable by using the private symbols for combase.dll as
+well as the same tooling as mentionned above, and the `odeth.idl` file seen on GitHub. The second deliverable of this repository is an up-to-date version we call
+`rundown.idl`.
+
 ### `lclor.exe`
 
 The upcoming command-line tool will leverage the IDL file in order to implement some functionality for looking up and allocating OXIDs with the Local OR, displaying
 relevant and useful information for research and analysis purposes.
+
+See below for additional information, such as input arguments and flags, as well as some sample output.
+
+#### Usage
+
+```
+lclor v1.0.0 -- Local OXID Resolver Tool
+Copyright (C) 2021 Alex Ionescu (@aionescu)
+www.alex-ionescu.com
+
+
+Usage: lclor.exe [-i | -l <OXID> [-B] | -b <OXID> <IPID>]
+    -b        Bind to the given IRemUnknown IPID for the given OXID
+    -i        Display information on the Local OR
+    -l        Lookup information on the given OXID
+    -B        Attempt binding to the IPID after the lookup
+````
+
+#### Examples
+
+```
+lclor v1.0.0 -- Local OXID Resolver Tool
+Copyright (C) 2021 Alex Ionescu (@aionescu)
+www.alex-ionescu.com
+
+Looking up OXID 0x36EF4713E3988C5A...
+
+COM Server Version         5.7
+Supports Container Version 3
+    Capability Flags:      0x0
+Linked Primary OXID:       0x36EF4713E3988C5A
+Apartment Type:            NTA
+Authentication Hint:       RPC_C_AUTHN_LEVEL_PKT
+Hosted by process ID:      2212
+Process GUID:              {5A6D128D-D460-485D-A88B-56F4F024C5EB}
+IRemUnknown IPID:          {0000AC01-08A4-FFFF-744E-5D33BA2A1435}
+Primary IRemUnknown IPID:  {0000AC01-08A4-FFFF-744E-5D33BA2A1435}
+Binding String:            ncalrpc:[OLE059D40EF2D5CBCA37D9896754A6C]
+```
+
+```
+lclor v1.0.0 -- Local OXID Resolver Tool
+Copyright (C) 2021 Alex Ionescu (@aionescu)
+www.alex-ionescu.com
+
+Looking up OXID 0xD6FF45175D39276E...
+
+COM Server Version         5.7
+Supports Container Version 3
+    Capability Flags:      0x0
+Linked Primary OXID:       0xD6FF45175D39276E
+Apartment Type:            NTA
+Flags:                     StrongNamed AppContainer Suspendable
+Authentication Hint:       RPC_C_AUTHN_LEVEL_PKT_INTEGRITY
+Hosted by process ID:      13160 (ShellExperienceHost.exe)
+Process GUID:              {39368377-6BBF-436B-B5C8-E7ADC99B84F9}
+Package name:              Microsoft.Windows.ShellExperienceHost_10.0.21382.1_neutral_neutral_cw5n1h2txyewy
+User SID:                  S-1-5-21-1928273713-1136577611-1766458866-1004
+AppContainer SID:          S-1-15-2-155514346-2573954481-755741238-1654018636-1233331829-3075935687-2861478708
+IRemUnknown IPID:          {00007C01-3368-FFFF-2CCD-509DE410C457}
+Primary IRemUnknown IPID:  {00007C01-3368-FFFF-2CCD-509DE410C457}
+Binding String:            ncalrpc:[\\Sessions\\1\\AppContainerNamedObjects\\S-1-15-2-155514346-2573954481-755741238-1654018636-1233331829-3075935687-2861478708\\RPC Control\\OLE584D7099BF0C3175917BE7B61119]
+```
+
+```
+lclor v1.0.0 -- Local OXID Resolver Tool
+Copyright (C) 2021 Alex Ionescu (@aionescu)
+www.alex-ionescu.com
+
+Binding to OXID 0x36EF4713E3988C5A with IPID {0000AC01-08A4-FFFF-744E-5D33BA2A1435}...
+
+Binding successful (0x000001A9A07D9A58), press any key to exit...
+```
 
 ## RPCSS Database Internals
 
